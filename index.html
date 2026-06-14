@@ -1,0 +1,728 @@
+```html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>バイカラー画像ジェネレーター</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+    }
+    /* スライダーのカスタムスタイリング */
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #3b82f6;
+      cursor: pointer;
+      transition: background .15s ease-in-out;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
+
+  <!-- ヘッダー -->
+  <header class="border-b border-slate-800/80 bg-slate-900/50 backdrop-blur sticky top-0 z-50 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <!-- バイカラーを模した2色アイコン -->
+          <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m9-9a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base font-bold tracking-tight text-white leading-none">Bicolor Lab</h1>
+          <span class="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Image Converter</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2 text-xs text-slate-400 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700/50">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Local Processing</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- 左側：プレビューエリア (7カラム) -->
+    <section class="lg:col-span-7 flex flex-col space-y-4">
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 flex-1 flex flex-col min-h-[350px] md:min-h-[500px] justify-between relative shadow-2xl overflow-hidden group">
+        
+        <!-- 背景のグリッドグラデーション（雰囲気用） -->
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent pointer-events-none"></div>
+
+        <!-- プレビュー上の操作バー -->
+        <div class="flex items-center justify-between mb-4 z-10">
+          <span class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+            <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            プレビュープレース
+          </span>
+          <div class="flex bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 text-xs">
+            <button id="btnViewBicolor" class="px-3 py-1 rounded-md font-medium bg-blue-600 text-white transition-all shadow-sm">バイカラー</button>
+            <button id="btnViewOriginal" class="px-3 py-1 rounded-md font-medium text-slate-400 hover:text-white transition-all">オリジナル</button>
+          </div>
+        </div>
+
+        <!-- 画像表示エリア -->
+        <div class="flex-1 flex items-center justify-center relative rounded-xl bg-slate-950/80 border border-slate-800/50 overflow-hidden min-h-[250px]">
+          <!-- チェッカーボード背景（透過確認用） -->
+          <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(#ffffff 1px, transparent 1px), radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px; background-position: 0 0, 10px 10px;"></div>
+          
+          <!-- ローディングインジケータ -->
+          <div id="loader" class="absolute inset-0 bg-slate-950/70 z-20 flex flex-col items-center justify-center gap-3 hidden">
+            <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-xs font-medium text-slate-300">画像を処理中...</p>
+          </div>
+
+          <!-- キャンバス & オリジナル画像 -->
+          <canvas id="outputCanvas" class="max-w-full max-h-[450px] object-contain z-10 transition-transform duration-200 shadow-xl rounded-lg"></canvas>
+          <img id="originalImg" class="max-w-full max-h-[450px] object-contain hidden z-10 shadow-xl rounded-lg" alt="オリジナル画像">
+        </div>
+
+        <!-- 下部情報バー -->
+        <div class="mt-4 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2 z-10">
+          <div id="imageSpecs" class="flex gap-4">
+            <span>サイズ: <strong id="specResolution" class="text-slate-300">-</strong></span>
+            <span>ファイル名: <strong id="specName" class="text-slate-300">-</strong></span>
+          </div>
+          <button id="btnDownload" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-blue-500/10 active:scale-95 disabled:opacity-50 disabled:pointer-events-none">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            画像を保存する
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右側：コントロールパネル (5カラム) -->
+    <section class="lg:col-span-5 flex flex-col space-y-6">
+      
+      <!-- アップローダーカード -->
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+        <h2 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2">
+          <span class="w-1.5 h-3.5 bg-blue-500 rounded-full inline-block"></span>
+          画像をアップロード
+        </h2>
+        
+        <!-- ドラッグ＆ドロップエリア -->
+        <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-blue-500 bg-slate-950/40 hover:bg-slate-900/40 rounded-xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center group relative overflow-hidden">
+          <input type="file" id="fileInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10">
+          <div class="p-3 bg-slate-900/80 rounded-xl group-hover:scale-110 transition-transform duration-200 border border-slate-800/80 mb-3">
+            <svg class="w-6 h-6 text-slate-400 group-hover:text-blue-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <p class="text-sm font-semibold text-slate-200">クリックして写真を選択</p>
+          <p class="text-xs text-slate-500 mt-1">または、ここに画像をドラッグ＆ドロップ</p>
+        </div>
+      </div>
+
+      <!-- カラー＆エフェクトコントロール -->
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl space-y-5 flex-1">
+        <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+          <span class="w-1.5 h-3.5 bg-blue-500 rounded-full inline-block"></span>
+          エフェクト設定
+        </h2>
+
+        <!-- モード選択 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">描画モード</label>
+          <div class="grid grid-cols-2 gap-2 p-1 bg-slate-950/80 rounded-xl border border-slate-850">
+            <button id="modeSharp" class="py-2 px-3 rounded-lg text-xs font-semibold transition-all bg-slate-800 text-white shadow-md">
+              シャープ (2値化)
+            </button>
+            <button id="modeGradation" class="py-2 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all">
+              グラデーション
+            </button>
+          </div>
+          <p id="modeDesc" class="text-[11px] text-slate-500 mt-1.5 px-1">しきい値で画像をはっきりと2色に分割します。グラフィックデザイン調に最適。</p>
+        </div>
+
+        <!-- カラー選択 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">2色の選択</label>
+          <div class="grid grid-cols-2 gap-3">
+            <!-- カラー1 (シャドウ部) -->
+            <div class="bg-slate-950/60 border border-slate-850 rounded-xl p-3 flex items-center justify-between">
+              <div class="flex flex-col">
+                <span class="text-[10px] text-slate-500 font-bold uppercase">Shadows (暗部)</span>
+                <span id="color1Hex" class="text-xs font-mono font-semibold text-slate-300">#000000</span>
+              </div>
+              <div class="relative w-9 h-9 rounded-lg overflow-hidden border border-slate-700/60 cursor-pointer shadow-inner">
+                <input type="color" id="color1" value="#111827" class="absolute inset-0 w-full h-full p-0 border-0 cursor-pointer scale-125">
+              </div>
+            </div>
+
+            <!-- カラー2 (ハイライト部) -->
+            <div class="bg-slate-950/60 border border-slate-850 rounded-xl p-3 flex items-center justify-between">
+              <div class="flex flex-col">
+                <span class="text-[10px] text-slate-500 font-bold uppercase">Highlights (明部)</span>
+                <span id="color2Hex" class="text-xs font-mono font-semibold text-slate-300">#FFFFFF</span>
+              </div>
+              <div class="relative w-9 h-9 rounded-lg overflow-hidden border border-slate-700/60 cursor-pointer shadow-inner">
+                <input type="color" id="color2" value="#60a5fa" class="absolute inset-0 w-full h-full p-0 border-0 cursor-pointer scale-125">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- プリセットパレット -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">カラープリセット</label>
+          <div class="grid grid-cols-4 gap-2" id="presetContainer">
+            <!-- プリセットはJSで動的に生成します -->
+          </div>
+        </div>
+
+        <div class="border-t border-slate-800/80 my-4"></div>
+
+        <!-- スライダー調整群 -->
+        <div class="space-y-4">
+          <!-- しきい値スライダー -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="thresholdSlider" class="text-xs font-semibold text-slate-300 flex items-center gap-1">
+                しきい値 (境界値)
+              </label>
+              <span id="thresholdVal" class="text-xs font-mono font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">128</span>
+            </div>
+            <input type="range" id="thresholdSlider" min="0" max="255" value="128" class="w-full h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+            <p class="text-[10px] text-slate-500 mt-1">値を大きくすると暗い部分が増え、小さくすると明るい部分が増えます。</p>
+          </div>
+
+          <!-- コントラスト（グラデーションモード時のみ有効） -->
+          <div id="contrastControl" class="transition-opacity duration-200 opacity-40 pointer-events-none">
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="contrastSlider" class="text-xs font-semibold text-slate-300">
+                階調のコントラスト
+              </label>
+              <span id="contrastVal" class="text-xs font-mono font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">1.0</span>
+            </div>
+            <input type="range" id="contrastSlider" min="0.1" max="3" step="0.1" value="1.0" class="w-full h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+            <p class="text-[10px] text-slate-500 mt-1">グラデーション移行領域のコントラスト（色の広がり）を調整します。</p>
+          </div>
+        </div>
+
+        <!-- 各種リセット・画像反転などのユーティリティ -->
+        <div class="flex items-center justify-between pt-2">
+          <button id="btnInvert" class="text-xs font-medium text-slate-400 hover:text-white flex items-center gap-1.5 bg-slate-800/40 hover:bg-slate-800 border border-slate-700/50 py-1.5 px-3 rounded-lg transition-all active:scale-95">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            2色を反転する
+          </button>
+          
+          <button id="btnReset" class="text-xs font-medium text-slate-400 hover:text-red-400 flex items-center gap-1.5 py-1.5 px-2 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 15.89M9.612 11h-.612m0 0h-.612M9.612 11l-3 3m3-3l-3-3" />
+            </svg>
+            リセット
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- トーストメッセージ通知 -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 border border-slate-800 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div id="toastIcon" class="w-5 h-5 flex items-center justify-center text-emerald-500">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+    <span id="toastMsg" class="text-xs font-medium text-slate-200">メッセージ</span>
+  </div>
+
+  <footer class="border-t border-slate-900 bg-slate-950 px-4 py-6 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <p>© 2026 Bicolor Lab. All processing is executed secure inside your web browser.</p>
+      <p class="flex items-center gap-3">
+        <span class="hover:text-slate-300 cursor-pointer">プライバシーポリシー</span>
+        <span class="hover:text-slate-300 cursor-pointer">利用規約</span>
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    // --- グローバルステート / DOMエレメント ---
+    const fileInput = document.getElementById('fileInput');
+    const dropzone = document.getElementById('dropzone');
+    const outputCanvas = document.getElementById('outputCanvas');
+    const originalImg = document.getElementById('originalImg');
+    const loader = document.getElementById('loader');
+
+    // ボタン・コントローラー
+    const btnViewBicolor = document.getElementById('btnViewBicolor');
+    const btnViewOriginal = document.getElementById('btnViewOriginal');
+    const btnDownload = document.getElementById('btnDownload');
+    const btnInvert = document.getElementById('btnInvert');
+    const btnReset = document.getElementById('btnReset');
+
+    const modeSharp = document.getElementById('modeSharp');
+    const modeGradation = document.getElementById('modeGradation');
+    const modeDesc = document.getElementById('modeDesc');
+
+    const color1Input = document.getElementById('color1');
+    const color2Input = document.getElementById('color2');
+    const color1Hex = document.getElementById('color1Hex');
+    const color2Hex = document.getElementById('color2Hex');
+
+    const thresholdSlider = document.getElementById('thresholdSlider');
+    const thresholdVal = document.getElementById('thresholdVal');
+    const contrastControl = document.getElementById('contrastControl');
+    const contrastSlider = document.getElementById('contrastSlider');
+    const contrastVal = document.getElementById('contrastVal');
+
+    const specResolution = document.getElementById('specResolution');
+    const specName = document.getElementById('specName');
+    const presetContainer = document.getElementById('presetContainer');
+
+    let currentMode = 'sharp'; // 'sharp' or 'gradation'
+    let originalImageObj = null;
+    let originalFileName = "sample_pattern.png";
+
+    // プリセットデータの定義
+    const presets = [
+      { name: "サイバー", c1: "#1b053a", c2: "#00f0ff" },
+      { name: "ゲーム機", c1: "#0f380f", c2: "#8bac0f" },
+      { name: "サクラ", c1: "#2d0b16", c2: "#ffa8ba" },
+      { name: "ポップ", c1: "#002fa7", c2: "#ffe600" },
+      { name: "フォレスト", c1: "#051f15", c2: "#c1f2be" },
+      { name: "セピア", c1: "#2e1e0a", c2: "#f3e1c3" },
+      { name: "モノクロ", c1: "#000000", c2: "#ffffff" },
+      { name: "サンセット", c1: "#2e0854", c2: "#ff7b00" }
+    ];
+
+    // --- 初期化処理 ---
+    window.onload = function() {
+      // プリセットボタンを生成
+      generatePresets();
+      // デフォルトの美しい幾何学画像（サンプル）を生成してセットする
+      createDefaultSample();
+      
+      // イベントリスナーの登録
+      setupEventListeners();
+    };
+
+    // --- プリセット生成 ---
+    function generatePresets() {
+      presetContainer.innerHTML = '';
+      presets.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = "flex flex-col items-center justify-center p-2 bg-slate-950/60 hover:bg-slate-800/80 border border-slate-850 hover:border-slate-700 rounded-xl transition-all cursor-pointer group active:scale-95";
+        btn.title = p.name;
+        
+        btn.innerHTML = `
+          <div class="flex w-full h-4 rounded-md overflow-hidden border border-slate-800 shadow-sm">
+            <span class="w-1/2" style="background-color: ${p.c1}"></span>
+            <span class="w-1/2" style="background-color: ${p.c2}"></span>
+          </div>
+          <span class="text-[10px] text-slate-400 group-hover:text-slate-200 mt-1 font-medium select-none truncate w-full text-center">${p.name}</span>
+        `;
+        
+        btn.addEventListener('click', () => {
+          color1Input.value = p.c1;
+          color2Input.value = p.c2;
+          updateColorHexText();
+          showToast(`プリセット「${p.name}」を適用しました`, 'success');
+          processImage();
+        });
+        
+        presetContainer.appendChild(btn);
+      });
+    }
+
+    // --- 初回起動時用の幾何学模様サンプル作成 ---
+    function createDefaultSample() {
+      const size = 800;
+      const sampleCanvas = document.createElement('canvas');
+      sampleCanvas.width = size;
+      sampleCanvas.height = size;
+      const ctx = sampleCanvas.getContext('2d');
+
+      // 背景グラデーション
+      const grad = ctx.createRadialGradient(size/2, size/2, 50, size/2, size/2, size);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, '#cccccc');
+      grad.addColorStop(0.8, '#333333');
+      grad.addColorStop(1, '#000000');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, size, size);
+
+      // 幾何学模様を描画 (美しいうずまき・多角形)
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = 'rgba(255,255,255,0.2)';
+
+      for(let i = 0; i < 180; i++) {
+        ctx.beginPath();
+        const angle = i * 0.1;
+        const r = 2 + (i * 2.8);
+        const x = size/2 + Math.cos(angle) * r;
+        const y = size/2 + Math.sin(angle) * r;
+        ctx.arc(x, y, (i * 0.15) + 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${0.1 + (i*0.005)})`;
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // 中央のアクセントシンボル
+      ctx.beginPath();
+      ctx.arc(size/2, size/2, 120, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.fill();
+      ctx.lineWidth = 10;
+      ctx.stroke();
+
+      // Imageオブジェクトとして取り込む
+      const img = new Image();
+      img.onload = function() {
+        originalImageObj = img;
+        originalImg.src = sampleCanvas.toDataURL();
+        updateMetadata(size, size, "sample_pattern.png");
+        updateColorHexText();
+        processImage();
+      };
+      img.src = sampleCanvas.toDataURL();
+    }
+
+    // --- メタデータ表示の更新 ---
+    function updateMetadata(w, h, filename) {
+      specResolution.innerText = `${w} × ${h} px`;
+      specName.innerText = filename;
+      originalFileName = filename;
+    }
+
+    // --- イベントリスナー設定 ---
+    function setupEventListeners() {
+      // ファイル選択
+      fileInput.addEventListener('change', handleFileSelect);
+
+      // ドラッグ＆ドロップ
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('border-blue-500', 'bg-slate-900/40');
+      });
+
+      dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('border-blue-500', 'bg-slate-900/40');
+      });
+
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('border-blue-500', 'bg-slate-900/40');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          fileInput.files = files;
+          handleFileSelect();
+        }
+      });
+
+      // コントロールの変更イベント
+      color1Input.addEventListener('input', () => {
+        updateColorHexText();
+        processImage();
+      });
+      color2Input.addEventListener('input', () => {
+        updateColorHexText();
+        processImage();
+      });
+
+      thresholdSlider.addEventListener('input', (e) => {
+        thresholdVal.innerText = e.target.value;
+        processImage();
+      });
+
+      contrastSlider.addEventListener('input', (e) => {
+        contrastVal.innerText = parseFloat(e.target.value).toFixed(1);
+        processImage();
+      });
+
+      // モード切り替え
+      modeSharp.addEventListener('click', () => {
+        setMode('sharp');
+      });
+      modeGradation.addEventListener('click', () => {
+        setMode('gradation');
+      });
+
+      // プレビュー切り替え
+      btnViewBicolor.addEventListener('click', () => {
+        togglePreviewMode(true);
+      });
+      btnViewOriginal.addEventListener('click', () => {
+        togglePreviewMode(false);
+      });
+
+      // 色反転
+      btnInvert.addEventListener('click', invertColors);
+
+      // リセット
+      btnReset.addEventListener('click', resetSettings);
+
+      // 保存
+      btnDownload.addEventListener('click', downloadImage);
+    }
+
+    // --- モード設定の切り替え ---
+    function setMode(mode) {
+      currentMode = mode;
+      if (mode === 'sharp') {
+        modeSharp.className = "py-2 px-3 rounded-lg text-xs font-semibold transition-all bg-slate-800 text-white shadow-md";
+        modeGradation.className = "py-2 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all";
+        modeDesc.innerText = "しきい値で画像をはっきりと2色に分割します。グラフィックデザイン調に最適。";
+        contrastControl.classList.add('opacity-40', 'pointer-events-none');
+      } else {
+        modeGradation.className = "py-2 px-3 rounded-lg text-xs font-semibold transition-all bg-slate-800 text-white shadow-md";
+        modeSharp.className = "py-2 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all";
+        modeDesc.innerText = "明るさに応じて2色の間をグラデーション補間します。写真の自然なディテールを残せます。";
+        contrastControl.classList.remove('opacity-40', 'pointer-events-none');
+      }
+      processImage();
+    }
+
+    // --- プレビューのバイカラー/オリジナル切り替え ---
+    function togglePreviewMode(showBicolor) {
+      if (showBicolor) {
+        btnViewBicolor.className = "px-3 py-1 rounded-md font-medium bg-blue-600 text-white transition-all shadow-sm";
+        btnViewOriginal.className = "px-3 py-1 rounded-md font-medium text-slate-400 hover:text-white transition-all";
+        outputCanvas.classList.remove('hidden');
+        originalImg.classList.add('hidden');
+      } else {
+        btnViewOriginal.className = "px-3 py-1 rounded-md font-medium bg-blue-600 text-white transition-all shadow-sm";
+        btnViewBicolor.className = "px-3 py-1 rounded-md font-medium text-slate-400 hover:text-white transition-all";
+        originalImg.classList.remove('hidden');
+        outputCanvas.classList.add('hidden');
+      }
+    }
+
+    // --- カラーHex値テキスト表示の更新 ---
+    function updateColorHexText() {
+      color1Hex.innerText = color1Input.value.toUpperCase();
+      color2Hex.innerText = color2Input.value.toUpperCase();
+    }
+
+    // --- 色反転 ---
+    function invertColors() {
+      const temp = color1Input.value;
+      color1Input.value = color2Input.value;
+      color2Input.value = temp;
+      updateColorHexText();
+      showToast("カラー1とカラー2を反転しました", "success");
+      processImage();
+    }
+
+    // --- 初期状態にリセット ---
+    function resetSettings() {
+      color1Input.value = "#111827";
+      color2Input.value = "#60a5fa";
+      updateColorHexText();
+      thresholdSlider.value = "128";
+      thresholdVal.innerText = "128";
+      contrastSlider.value = "1.0";
+      contrastVal.innerText = "1.0";
+      setMode('sharp');
+      showToast("設定をデフォルトにリセットしました", "success");
+      processImage();
+    }
+
+    // --- ファイルがアップロードされた際の処理 ---
+    function handleFileSelect() {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      if (!file.type.match('image.*')) {
+        showToast("画像ファイルを選択してください", "error");
+        return;
+      }
+
+      loader.classList.remove('hidden');
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          originalImageObj = img;
+          originalImg.src = e.target.result;
+          
+          updateMetadata(img.width, img.height, file.name);
+          togglePreviewMode(true); // バイカラー表示に戻す
+          processImage();
+          
+          showToast("写真を読み込みました！", "success");
+          loader.classList.add('hidden');
+        };
+        img.onerror = function() {
+          showToast("画像の読み込みに失敗しました", "error");
+          loader.classList.add('hidden');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // --- ヘルパー: HexカラーをRGBオブジェクトに変換 ---
+    function hexToRgb(hex) {
+      const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+      const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : { r: 0, g: 0, b: 0 };
+    }
+
+    // --- メイン画像処理ロジック (バイカラー変換) ---
+    function processImage() {
+      if (!originalImageObj) return;
+
+      const ctx = outputCanvas.getContext('2d');
+      const w = originalImageObj.width;
+      const h = originalImageObj.height;
+
+      // canvasのサイズを元の画像に設定
+      outputCanvas.width = w;
+      outputCanvas.height = h;
+
+      // canvasに元の画像を描画
+      ctx.drawImage(originalImageObj, 0, 0, w, h);
+
+      // ピクセルデータの取得
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+
+      // 適用カラーのRGB変換
+      const color1 = hexToRgb(color1Input.value); // シャドウ（暗部）用
+      const color2 = hexToRgb(color2Input.value); // ハイライト（明部）用
+
+      const threshold = parseInt(thresholdSlider.value);
+      const contrast = parseFloat(contrastSlider.value);
+
+      if (currentMode === 'sharp') {
+        // --- シャープモード (2値化) ---
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          // 輝度の計算 (高精度Rec.601輝度公式)
+          const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          if (luma < threshold) {
+            data[i] = color1.r;
+            data[i + 1] = color1.g;
+            data[i + 2] = color1.b;
+          } else {
+            data[i] = color2.r;
+            data[i + 1] = color2.g;
+            data[i + 2] = color2.b;
+          }
+        }
+      } else {
+        // --- グラデーションモード (デュオトーン) ---
+        const normThreshold = threshold / 255;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          // 輝度の計算 (0.0 から 1.0 に正規化)
+          let lumaNorm = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+          // しきい値とコントラストによるマッピング調整
+          // しきい値より低い部分はシャドウ色に、高い部分はハイライト色に傾斜
+          let t = (lumaNorm - normThreshold) * contrast + 0.5;
+          
+          // クランプ (0.0 から 1.0 に制限)
+          t = Math.max(0, Math.min(1, t));
+
+          // 2色間の線形補間 (Linear Interpolation)
+          data[i] = Math.round(color1.r + (color2.r - color1.r) * t);
+          data[i + 1] = Math.round(color1.g + (color2.g - color1.g) * t);
+          data[i + 2] = Math.round(color1.b + (color2.b - color1.b) * t);
+        }
+      }
+
+      // 編集したピクセルデータをCanvasに書き戻す
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    // --- トーストメッセージ通知表示 ---
+    let toastTimeout;
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.innerText = msg;
+      
+      if (type === 'success') {
+        toastIcon.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>`;
+        toastIcon.className = "w-5 h-5 flex items-center justify-center text-emerald-500 bg-emerald-500/10 p-1 rounded-full";
+      } else {
+        toastIcon.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
+        toastIcon.className = "w-5 h-5 flex items-center justify-center text-rose-500 bg-rose-500/10 p-1 rounded-full";
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    // --- 画像の保存 (ダウンロード) ---
+    function downloadImage() {
+      if (!originalImageObj) return;
+
+      try {
+        // ファイル名を加工して「_bicolor」を付与
+        const baseName = originalFileName.substring(0, originalFileName.lastIndexOf('.')) || originalFileName;
+        const finalFileName = `${baseName}_bicolor.png`;
+
+        // CanvasからDataURLを作成してダウンロード
+        const dataUrl = outputCanvas.toDataURL('image/png');
+        
+        const link = document.createElement('a');
+        link.download = finalFileName;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showToast("加工した画像を保存しました！", "success");
+      } catch (err) {
+        console.error(err);
+        showToast("画像の書き出しに失敗しました。透過処理やクロスオリジンの可能性があります。", "error");
+      }
+    }
+  </script>
+</body>
+</html>
+
+```
